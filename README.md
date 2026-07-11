@@ -34,17 +34,20 @@ call to the hosted CertIndex REST API over HTTPS. Two consequences:
 ## Install
 
 ```bash
-pip install git+https://github.com/certindex/certindex-mcp
+pip install certindex-mcp
 ```
 
 Or with [`uvx`](https://docs.astral.sh/uv/) for one-shot use:
 
 ```bash
-uvx --from git+https://github.com/certindex/certindex-mcp certindex-mcp
+uvx certindex-mcp
 ```
 
-(PyPI release coming soon — after that, plain `pip install certindex-mcp` /
-`uvx certindex-mcp` will work too.)
+To install the latest development version from source instead:
+
+```bash
+pip install git+https://github.com/certindex/certindex-mcp
+```
 
 ## Quickstart — Claude Desktop
 
@@ -56,7 +59,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
   "mcpServers": {
     "certindex": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/certindex/certindex-mcp", "certindex-mcp"],
+      "args": ["certindex-mcp"],
       "env": {
         "CERTINDEX_API_KEY": "ctx_live_..."
       }
@@ -73,7 +76,7 @@ Restart Claude Desktop. The six CertIndex tools (`search_certificates`,
 
 ```bash
 export CERTINDEX_API_KEY=ctx_live_...
-npx @modelcontextprotocol/inspector uvx --from git+https://github.com/certindex/certindex-mcp certindex-mcp
+npx @modelcontextprotocol/inspector uvx certindex-mcp
 ```
 
 ## Configuration
