@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.certindex/certindex-mcp",
-  "description": "Certificate Transparency search for AI agents: query the CertIndex CT-log index for certificates, subdomains, issuance history, and expiry across the public CT corpus.",
+  "description": "Certificate Transparency search for AI agents: certs, subdomains, issuance history, expiry.",
   "repository": {
     "url": "https://github.com/certindex/certindex-mcp",
     "source": "github"
