@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.certindex/certindex-mcp",
+  "description": "Certificate Transparency search for AI agents: query the CertIndex CT-log index for certificates, subdomains, issuance history, and expiry across the public CT corpus.",
+  "repository": {
+    "url": "https://github.com/certindex/certindex-mcp",
+    "source": "github"
+  },
+  "version": "0.1.1",
+  "websiteUrl": "https://ctindex.io",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "certindex-mcp",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CERTINDEX_API_KEY",
+          "description": "CertIndex API key (free tier at https://ctindex.io)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

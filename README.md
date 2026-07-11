@@ -1,5 +1,7 @@
 # certindex-mcp
 
+<!-- mcp-name: io.github.certindex/certindex-mcp -->
+
 [![CI](https://github.com/certindex/certindex-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/certindex/certindex-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/certindex-mcp.svg)](https://pypi.org/project/certindex-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
