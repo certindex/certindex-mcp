@@ -100,6 +100,7 @@ def _build_server(client: CertIndexClient):
         domain: str,
         valid_only: bool = False,
         include_enrichment: bool = False,
+        include_signals: bool = False,
         page: int = 1,
         limit: int = 10,
     ) -> dict[str, Any]:
@@ -107,12 +108,19 @@ def _build_server(client: CertIndexClient):
         return a ``backfill_status`` sentinel; retry per the hint.
 
         Set ``include_enrichment=true`` to attach RDAP + DNS + ASN/hosting
-        context for the domain under ``enrichment``."""
+        context for the domain under ``enrichment``.
+
+        Set ``include_signals=true`` to also attach derived attribution
+        signals under ``enrichment.signals`` (issuer_diversity_score,
+        wildcard_breadth, third_party_vendors, weak_crypto_reasons).
+        Implies enrichment. Requires a paid CertIndex plan (Pro or
+        higher); free-tier keys get a ``tier_not_entitled`` error."""
         try:
             d = validate_domain(domain)
             params = {
                 "valid_only": valid_only,
                 "include_enrichment": include_enrichment,
+                "include_signals": include_signals,
                 "page": clamp_page(page),
                 "limit": clamp_limit(limit),
             }
@@ -122,32 +130,77 @@ def _build_server(client: CertIndexClient):
 
     @mcp.tool()
     async def get_subdomains(
-        domain: str, page: int = 1, limit: int = 25
+        domain: str,
+        page: int = 1,
+        limit: int = 25,
+        cursor: str | None = None,
     ) -> dict[str, Any]:
-        """Enumerate unique subdomains seen in CT logs."""
+        """Enumerate unique subdomains seen in CT logs.
+
+        Two pagination modes:
+
+        * **Offset (default):** ``page``/``limit`` (limit clamped to 50),
+          ordered by popularity (cert_count DESC).
+        * **Cursor:** pass ``cursor=""`` (empty string) to start a keyset
+          enumeration ordered by subdomain name ASC (stable against
+          concurrent inserts; ``limit`` may go up to your tier ceiling).
+          Then pass each response's ``next_cursor`` back until the
+          response no longer carries a ``next_cursor`` value — that
+          marks the terminal page. ``page`` is ignored in cursor mode.
+        """
         try:
             d = validate_domain(domain)
-            params = {"page": clamp_page(page), "limit": clamp_limit(limit)}
+            params: dict[str, Any] = {"page": clamp_page(page)}
+            if cursor is not None:
+                # Cursor mode: the server enforces the tier-aware limit
+                # ceiling itself (up to 1000); don't pre-clamp to the
+                # offset-mode maximum here. ``cursor=""`` must survive
+                # to the wire (client only drops None-valued params).
+                if not isinstance(limit, int) or isinstance(limit, bool):
+                    return McpValidationError(
+                        "limit", "must be an integer"
+                    ).to_tool_error()
+                params["limit"] = max(1, limit)
+                params["cursor"] = cursor
+            else:
+                params["limit"] = clamp_limit(limit)
         except McpValidationError as exc:
             return exc.to_tool_error()
         return await client.get(f"/get_subdomains/{d}", params=params)
 
     @mcp.tool()
     async def get_latest_cert(
-        domain: str, include_enrichment: bool = False
+        domain: str,
+        include_enrichment: bool = False,
+        include_signals: bool = False,
     ) -> dict[str, Any]:
-        """Most recently issued cert for a domain (or ``{cert: null}``
-        with a backfill sentinel on cold domains).
+        """Most recent CURRENTLY-VALID cert for a domain (or
+        ``{cert: null}`` with a backfill sentinel on cold domains).
+
+        Currently-valid certificates are always preferred; a final leaf
+        beats its precert twin. Only when the index holds NO
+        currently-valid certificate is an expired one returned — then
+        the response carries a top-level ``warning`` field. Never treat
+        a response with ``warning`` set as the domain's active cert.
 
         Set ``include_enrichment=true`` to attach RDAP + DNS + ASN/hosting
-        context for the domain under ``cert.enrichment``."""
+        context for the domain under ``cert.enrichment``.
+
+        Set ``include_signals=true`` to also attach derived attribution
+        signals under ``cert.enrichment.signals`` (issuer_diversity_score,
+        wildcard_breadth, third_party_vendors, weak_crypto_reasons).
+        Implies enrichment. Requires a paid CertIndex plan (Pro or
+        higher); free-tier keys get a ``tier_not_entitled`` error."""
         try:
             d = validate_domain(domain)
         except McpValidationError as exc:
             return exc.to_tool_error()
         return await client.get(
             f"/get_latest_cert/{d}",
-            params={"include_enrichment": include_enrichment},
+            params={
+                "include_enrichment": include_enrichment,
+                "include_signals": include_signals,
+            },
         )
 
     @mcp.tool()
