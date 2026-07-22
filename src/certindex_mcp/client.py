@@ -19,7 +19,7 @@ import httpx
 
 DEFAULT_BASE_URL = "https://api.ctindex.io"
 DEFAULT_TIMEOUT_SECONDS = 30.0
-USER_AGENT = "certindex-mcp/0.1.2 (+https://github.com/certindex/certindex-mcp)"
+USER_AGENT = "certindex-mcp/0.1.3 (+https://github.com/certindex/certindex-mcp)"
 
 
 class CertIndexConfigError(RuntimeError):

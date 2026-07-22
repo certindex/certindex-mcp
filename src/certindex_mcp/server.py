@@ -173,15 +173,21 @@ def _build_server(client: CertIndexClient):
         domain: str,
         include_enrichment: bool = False,
         include_signals: bool = False,
+        include_precerts: bool = False,
     ) -> dict[str, Any]:
         """Most recent CURRENTLY-VALID cert for a domain (or
         ``{cert: null}`` with a backfill sentinel on cold domains).
 
-        Currently-valid certificates are always preferred; a final leaf
-        beats its precert twin. Only when the index holds NO
-        currently-valid certificate is an expired one returned — then
-        the response carries a top-level ``warning`` field. Never treat
-        a response with ``warning`` set as the domain's active cert.
+        Currently-valid certificates are always preferred. By default
+        (``include_precerts=false``) a final (leaf) certificate always
+        beats ANY precertificate — a precert is only returned when the
+        index holds no final cert for the domain at all. Set
+        ``include_precerts=true`` to let precerts compete on equal terms
+        (newest issuance wins even if only its precert has been
+        observed). Only when the index holds NO currently-valid
+        certificate is an expired one returned — then the response
+        carries a top-level ``warning`` field. Never treat a response
+        with ``warning`` set as the domain's active cert.
 
         Set ``include_enrichment=true`` to attach RDAP + DNS + ASN/hosting
         context for the domain under ``cert.enrichment``.
@@ -200,6 +206,7 @@ def _build_server(client: CertIndexClient):
             params={
                 "include_enrichment": include_enrichment,
                 "include_signals": include_signals,
+                "include_precerts": include_precerts,
             },
         )
 
