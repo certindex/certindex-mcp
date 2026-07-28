@@ -70,9 +70,24 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
 }
 ```
 
-Restart Claude Desktop. The six CertIndex tools (`search_certificates`,
-`get_certificate`, `get_domain_certificates`, `get_subdomains`,
-`get_latest_cert`, `get_expiring_certs`) appear in the tool tray.
+Restart Claude Desktop. The ten CertIndex tools appear in the tool tray.
+
+## Tools
+
+Ten tools, matching the hosted CertIndex MCP server 1:1:
+
+| Tool | What it does | Notable parameters |
+| --- | --- | --- |
+| `search_certificates` | Search the CT index by domain, CN, issuer, SAN, validity, or wildcard status. | `domain`, `cn`, `issuer`, `san`, `expired`, `is_wildcard`, `page`/`limit` |
+| `get_certificate` | Fetch a single cert by SHA-256 fingerprint. | `sha256`, `include_enrichment` |
+| `get_domain_certificates` | Every cert ever issued for an exact domain. | `valid_only`, `include_enrichment`, `include_signals` (paid plans), `page`/`limit` |
+| `get_subdomains` | Enumerate unique subdomains seen in CT. | Offset (`page`/`limit`) **or** keyset cursor mode — pass `cursor=""` to start, then feed back each response's `next_cursor` |
+| `get_latest_cert` | Most recent currently-valid cert for a domain. | `include_enrichment`, `include_signals`, `include_precerts` (let precertificates compete for "latest") |
+| `get_expiring_certs` | Certs for a domain expiring within `days` days. | `days` |
+| `submit_global_sweep` | Submit an async, domain-less CN/SAN substring sweep of the entire index (`POST /v1/sweeps`). | `cn`/`san_contains` (3+ chars, at least one required), `issuer`, `is_wildcard`, `is_precert`, `expired`, `first_seen_*`/`not_after_*` date bounds, `strict_attribution`, `resume_token` (continuation past the result cap) |
+| `get_sweep_results` | Poll a sweep job and paginate its results when done (`GET /v1/sweeps/{id}`). | `sweep_id`, `page`/`limit` (up to 1,000) |
+| `get_usage` | Caller's tier, current usage, remaining quota, and entitlements. | — |
+| `get_historical_backfill_status` | Check / start the paid deep-history backfill for a domain. | `domain` |
 
 ## Quickstart — MCP Inspector
 

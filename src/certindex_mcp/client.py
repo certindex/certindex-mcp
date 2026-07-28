@@ -19,7 +19,7 @@ import httpx
 
 DEFAULT_BASE_URL = "https://api.ctindex.io"
 DEFAULT_TIMEOUT_SECONDS = 30.0
-USER_AGENT = "certindex-mcp/0.1.3 (+https://github.com/certindex/certindex-mcp)"
+USER_AGENT = "certindex-mcp/0.2.0 (+https://github.com/certindex/certindex-mcp)"
 
 
 class CertIndexConfigError(RuntimeError):
@@ -97,6 +97,32 @@ class CertIndexClient:
         clean = {k: v for k, v in (params or {}).items() if v is not None}
         async with self._client() as client:
             resp = await client.get(f"/mcp-api{path}", params=clean)
+        if resp.status_code >= 400:
+            return _error_body(resp)
+        return resp.json()
+
+    async def get_v1(self, path: str, params: dict | None = None) -> dict[str, Any]:
+        """GET ``{base}/v1{path}`` — same error semantics as :meth:`get`.
+
+        Used by the tools whose canonical REST surface lives under
+        ``/v1`` rather than the ``/mcp-api`` tool mirror (async sweeps).
+        """
+        clean = {k: v for k, v in (params or {}).items() if v is not None}
+        async with self._client() as client:
+            resp = await client.get(f"/v1{path}", params=clean)
+        if resp.status_code >= 400:
+            return _error_body(resp)
+        return resp.json()
+
+    async def post_v1(self, path: str, body: dict | None = None) -> dict[str, Any]:
+        """POST ``{base}/v1{path}`` with a JSON body — same error semantics.
+
+        None-valued keys are dropped so the server never sees explicit
+        nulls as "filter to empty".
+        """
+        clean = {k: v for k, v in (body or {}).items() if v is not None}
+        async with self._client() as client:
+            resp = await client.post(f"/v1{path}", json=clean)
         if resp.status_code >= 400:
             return _error_body(resp)
         return resp.json()

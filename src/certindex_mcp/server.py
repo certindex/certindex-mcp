@@ -1,11 +1,13 @@
 """FastMCP stdio entry point for certindex-mcp.
 
-Six tools that mirror the hosted CertIndex MCP surface
+Ten tools that mirror the hosted CertIndex MCP surface
 (``https://api.ctindex.io/mcp``). Each tool:
 
   1. Validates input client-side (rejects malformed hostnames /
      SHA-256s / overlong substrings before going to the wire).
-  2. Forwards to ``GET /mcp-api/<tool>`` on the configured base URL.
+  2. Forwards to ``GET /mcp-api/<tool>`` on the configured base URL
+     (the async sweep tools use the canonical ``/v1/sweeps`` REST
+     surface instead — ``POST /v1/sweeps`` / ``GET /v1/sweeps/{id}``).
   3. Returns the upstream JSON body verbatim, or a structured error
      dict on validation failure / HTTP error.
 
@@ -219,6 +221,109 @@ def _build_server(client: CertIndexClient):
         except McpValidationError as exc:
             return exc.to_tool_error()
         return await client.get(f"/get_expiring_certs/{d}", params=params)
+
+    @mcp.tool()
+    async def submit_global_sweep(
+        cn: str | None = None,
+        san_contains: str | None = None,
+        issuer: str | None = None,
+        is_wildcard: bool | None = None,
+        is_precert: bool | None = None,
+        expired: bool | None = None,
+        first_seen_after: str | None = None,
+        first_seen_before: str | None = None,
+        not_after_after: str | None = None,
+        not_after_before: str | None = None,
+        strict_attribution: bool | None = None,
+        resume_token: str | None = None,
+    ) -> dict[str, Any]:
+        """Submit an asynchronous GLOBAL (domain-less) CN/SAN substring
+        sweep of the entire index as a background job — the escape hatch
+        when a global search exceeds the synchronous query budget.
+
+        At least one of ``cn`` / ``san_contains`` is required (3+ chars);
+        ``issuer`` may only be combined with one of them. Optional
+        tri-state filters: ``is_wildcard`` / ``is_precert`` / ``expired``.
+        Date bounds (``first_seen_*`` / ``not_after_*``) are ISO-8601.
+        ``strict_attribution=true`` drops pure substring-collision rows.
+
+        Returns ``{sweep_id, status, ...}`` — poll it with
+        ``get_sweep_results``. Consumes one global-sweep quota unit per
+        submission (quota varies by plan; free tier is not entitled).
+
+        **Continuation:** when a finished sweep reports ``truncated:
+        true``, submit a NEW sweep with the SAME filters plus
+        ``resume_token`` set to the previous sweep's ``next_cursor`` to
+        fetch the next chunk without gaps or duplicates."""
+        try:
+            body = {
+                "cn": validate_substring(cn, parameter="cn"),
+                "san_contains": validate_substring(
+                    san_contains, parameter="san_contains"
+                ),
+                "issuer": validate_substring(issuer, parameter="issuer"),
+                "is_wildcard": is_wildcard,
+                "is_precert": is_precert,
+                "expired": expired,
+                "first_seen_after": first_seen_after,
+                "first_seen_before": first_seen_before,
+                "not_after_after": not_after_after,
+                "not_after_before": not_after_before,
+                "strict_attribution": strict_attribution,
+                "resume_token": resume_token,
+            }
+        except McpValidationError as exc:
+            return exc.to_tool_error()
+        return await client.post_v1("/sweeps", body=body)
+
+    @mcp.tool()
+    async def get_sweep_results(
+        sweep_id: str, page: int = 1, limit: int = 100
+    ) -> dict[str, Any]:
+        """Poll an async sweep job by id; paginate its bounded result set
+        once the job completes.
+
+        While ``queued``/``running`` the response is status-only; when
+        ``done`` it carries a page of results (same row shape as
+        certificate search, plus a per-row ``match_class`` attribution
+        annotation); when ``failed`` it carries the structured error. A
+        ``done`` result with ``truncated: true`` also carries
+        ``next_cursor`` — resubmit via ``submit_global_sweep`` with
+        ``resume_token`` to continue past the result cap."""
+        sid = (sweep_id or "").strip()
+        if not sid:
+            return McpValidationError("sweep_id", "is required").to_tool_error()
+        try:
+            params = {
+                "page": clamp_page(page),
+                "limit": max(1, min(int(limit), 1000)),
+            }
+        except (TypeError, ValueError):
+            return McpValidationError("limit", "must be an integer").to_tool_error()
+        return await client.get_v1(f"/sweeps/{sid}", params=params)
+
+    @mcp.tool()
+    async def get_usage() -> dict[str, Any]:
+        """Return the caller's tier, current usage, remaining quota,
+        billing period boundary, and add-on entitlements — lets an agent
+        budget its own calls. Not rate-limited."""
+        return await client.get("/usage")
+
+    @mcp.tool()
+    async def get_historical_backfill_status(domain: str) -> dict[str, Any]:
+        """Check — and, when entitled, start or resume — the paid
+        deep-historical certificate backfill for a domain.
+
+        Active-cert lookups are always free and instant via the other
+        tools; this covers the SEPARATE paid per-domain add-on that walks
+        the full CT history. An un-entitled caller gets ``entitled:
+        false`` and a hint; an entitled caller starts/resumes the deep
+        walk and receives a wall-clock estimate plus live progress."""
+        try:
+            d = validate_domain(domain)
+        except McpValidationError as exc:
+            return exc.to_tool_error()
+        return await client.get("/historical_backfill_status", params={"domain": d})
 
     return mcp
 
