@@ -16,6 +16,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+from certindex_mcp import __version__
+
 TOOLS = {
     "search_certificates",
     "get_certificate",
@@ -126,6 +128,7 @@ async def stdio_client(upstream):
             "clientInfo": {"name": "certindex-regression", "version": "1"},
         })
         assert initialized["serverInfo"]["name"] == "certindex"
+        assert initialized["serverInfo"]["version"] == __version__
         assert "tools" in initialized["capabilities"]
         await rpc("notifications/initialized", notification=True)
         yield rpc, initialized
@@ -175,3 +178,81 @@ async def test_installed_console_script_stdio(upstream):
         assert denied == {
             "error": "invalid_api_key", "message": "Test key rejected", "status": 403,
         }
+
+
+# Assert complete outbound requests, including defaults, so schema migration
+# cannot silently change argument binding, None-dropping, or cursor semantics.
+CALLS = [
+    (
+        "search_certificates", {"domain": "example.com", "page": 2, "limit": 5},
+        "GET", "/mcp-api/search_certificates",
+        {"domain": ["example.com"], "page": ["2"], "limit": ["5"]}, None,
+    ),
+    (
+        "get_certificate", {"sha256": "a" * 64, "include_enrichment": True},
+        "GET", "/mcp-api/get_certificate/" + "a" * 64,
+        {"include_enrichment": ["true"]}, None,
+    ),
+    (
+        "get_domain_certificates", {"domain": "example.com"},
+        "GET", "/mcp-api/get_domain_certificates/example.com",
+        {"valid_only": ["false"], "include_enrichment": ["false"],
+         "include_signals": ["false"], "page": ["1"], "limit": ["10"]}, None,
+    ),
+    (
+        "get_subdomains", {"domain": "example.com", "cursor": "", "limit": 100},
+        "GET", "/mcp-api/get_subdomains/example.com",
+        {"page": ["1"], "limit": ["100"], "cursor": [""]}, None,
+    ),
+    (
+        "get_latest_cert", {"domain": "example.com", "include_precerts": True},
+        "GET", "/mcp-api/get_latest_cert/example.com",
+        {"include_enrichment": ["false"], "include_signals": ["false"],
+         "include_precerts": ["true"]}, None,
+    ),
+    (
+        "get_expiring_certs", {"domain": "example.com", "days": 14},
+        "GET", "/mcp-api/get_expiring_certs/example.com", {"days": ["14"]}, None,
+    ),
+    (
+        "submit_global_sweep", {"cn": "example", "is_precert": False},
+        "POST", "/v1/sweeps", {}, {"cn": "example", "is_precert": False},
+    ),
+    (
+        "get_sweep_results", {"sweep_id": "test-sweep", "page": 2, "limit": 250},
+        "GET", "/v1/sweeps/test-sweep", {"page": ["2"], "limit": ["250"]}, None,
+    ),
+    ("get_usage", {}, "GET", "/mcp-api/usage", {}, None),
+    (
+        "get_historical_backfill_status", {"domain": "example.com"},
+        "GET", "/mcp-api/historical_backfill_status", {"domain": ["example.com"]}, None,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "name,arguments,method,path,query,body", CALLS, ids=[call[0] for call in CALLS],
+)
+async def test_all_tools_over_stdio(upstream, name, arguments, method, path, query, body):
+    # Structured fixture data must round-trip intact through MCP serialization.
+    payload = {"fixture_tool": name, "results": [{"value": 1}], "next_cursor": None}
+    upstream["payload"] = payload
+    if method == "POST":
+        upstream["status"] = 202
+    async with stdio_client(upstream) as (rpc, _initialized):
+        listing = await rpc("tools/list")
+        tool = next(tool for tool in listing["tools"] if tool["name"] == name)
+        assert set(arguments) <= set(tool["inputSchema"].get("properties", {}))
+        result = await rpc("tools/call", {"name": name, "arguments": arguments})
+        assert tool_json(result) == payload
+        assert upstream["requests"] == [{
+            "method": method, "path": path, "query": query, "body": body,
+            "api_key": "stdio-test-only",
+        }]
+
+
+async def test_missing_required_argument_is_protocol_error(upstream):
+    async with stdio_client(upstream) as (rpc, _initialized):
+        result = await rpc("tools/call", {"name": "get_certificate", "arguments": {}})
+        assert result["isError"] is True
+        assert upstream["requests"] == []

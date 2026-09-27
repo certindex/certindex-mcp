@@ -35,6 +35,10 @@ call to the hosted CertIndex REST API over HTTPS. Two consequences:
 
 ## Install
 
+Version 0.3.0 uses MCP Python SDK 2.x (`mcp>=2,<3`) and Python 3.11+.
+The console command, environment variables and ten tool names are unchanged.
+For applications that must retain SDK 1.x, use `certindex-mcp==0.2.1`.
+
 ```bash
 pip install certindex-mcp
 ```
@@ -119,7 +123,10 @@ pip install -e ".[dev]"
 pytest
 ```
 
-CI runs on Python 3.11 / 3.12 / 3.13.
+CI runs on Python 3.11 / 3.12 / 3.13 with both SDK 2.0.0 and the latest
+allowed 2.x release. It also installs the built wheel into a fresh environment
+and exercises initialization, tool enumeration and calls over real stdio.
+HTTP fixtures run on loopback; tests do not require production credentials.
 
 ## License
 

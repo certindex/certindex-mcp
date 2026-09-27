@@ -90,7 +90,7 @@ async def test_usage_and_backfill_ride_mcp_api(monkeypatch):
 
 
 async def test_server_registers_ten_tools(monkeypatch):
-    """The FastMCP server must expose exactly the ten hosted tools."""
+    """The MCP server must expose exactly the ten hosted tools."""
     from certindex_mcp.server import _build_server
 
     c = _client(monkeypatch)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+- Migrate to `mcp.server.mcpserver.MCPServer` and bound the dependency to
+  `mcp>=2,<3` to avoid silently accepting the next incompatible major version.
+- Explicitly report the package version during MCP initialization.
+- Preserve the console entry point, configuration and ten tool names.
+- Exercise every tool over real stdio against a local HTTP fixture, checking
+  argument routing, defaults, blank cursors, JSON bodies and response content.
+- Test SDK 2.0.0 and latest allowed 2.x in CI, including clean-wheel installs.
+- Retain 0.2.1 as the SDK 1.x fallback. Publish and verify it first.
+
 ## 0.2.1 (unreleased)
 
 - Restrict the existing FastMCP implementation to MCP SDK 1.x

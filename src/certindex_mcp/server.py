@@ -1,4 +1,4 @@
-"""FastMCP stdio entry point for certindex-mcp.
+"""MCP SDK v2 stdio entry point for certindex-mcp.
 
 Ten tools that mirror the hosted CertIndex MCP surface
 (``https://api.ctindex.io/mcp``). Each tool:
@@ -15,17 +15,15 @@ The entry point :func:`main` runs the server over stdio so any MCP
 client (Claude Desktop, Continue, MCP Inspector, …) can spawn it.
 
 NB: this module deliberately does NOT use ``from __future__ import
-annotations``. FastMCP introspects each tool's parameter annotations
-at registration time (``issubclass(param.annotation, Context)``); with
-PEP 563 deferred evaluation those annotations are strings and the
-introspection raises ``TypeError``. Keeping runtime annotations here
-is the smallest fix that lets every tool register cleanly.
+annotations``. Preserve runtime annotations for tool-schema introspection;
+the stdio tests verify schemas and calls at the client-visible boundary.
 """
 
 import asyncio
 import logging
 from typing import Any
 
+from . import __version__
 from .client import CertIndexClient
 from .validation import (
     McpValidationError,
@@ -42,14 +40,14 @@ logger = logging.getLogger("certindex_mcp")
 
 
 def _build_server(client: CertIndexClient):
-    """Construct and return a configured FastMCP server.
+    """Construct and return a configured SDK v2 MCPServer.
 
     Factored out of :func:`main` so unit tests can inject a stubbed
     :class:`CertIndexClient` (e.g. one backed by :mod:`respx`).
     """
-    from mcp.server.fastmcp import FastMCP  # local import keeps `--help` cheap
+    from mcp.server.mcpserver import MCPServer
 
-    mcp = FastMCP("certindex")
+    mcp = MCPServer("certindex", version=__version__)
 
     @mcp.tool()
     async def search_certificates(
