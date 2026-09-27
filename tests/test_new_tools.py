@@ -89,15 +89,13 @@ async def test_usage_and_backfill_ride_mcp_api(monkeypatch):
     assert bf.calls.last.request.url.params["domain"] == "example.com"
 
 
-def test_server_registers_ten_tools(monkeypatch):
+async def test_server_registers_ten_tools(monkeypatch):
     """The FastMCP server must expose exactly the ten hosted tools."""
-    import asyncio
-
     from certindex_mcp.server import _build_server
 
     c = _client(monkeypatch)
     mcp = _build_server(c)
-    tools = asyncio.get_event_loop().run_until_complete(mcp.list_tools())
+    tools = await mcp.list_tools()
     names = sorted(t.name for t in tools)
     assert names == sorted(
         [

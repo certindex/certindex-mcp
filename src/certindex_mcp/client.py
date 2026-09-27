@@ -17,9 +17,11 @@ from typing import Any
 
 import httpx
 
+from . import __version__
+
 DEFAULT_BASE_URL = "https://api.ctindex.io"
 DEFAULT_TIMEOUT_SECONDS = 30.0
-USER_AGENT = "certindex-mcp/0.2.0 (+https://github.com/certindex/certindex-mcp)"
+USER_AGENT = f"certindex-mcp/{__version__} (+https://github.com/certindex/certindex-mcp)"
 
 
 class CertIndexConfigError(RuntimeError):

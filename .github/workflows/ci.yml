@@ -31,6 +31,16 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest -v
+      - name: Build distributions
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*
+      - name: Test clean wheel installation over stdio
+        run: |
+          python -m venv /tmp/certindex-wheel
+          /tmp/certindex-wheel/bin/pip install dist/*.whl pytest pytest-asyncio
+          /tmp/certindex-wheel/bin/python -m pytest -v tests/test_stdio.py tests/test_release_metadata.py
 
   audit:
     name: Dependency audit
