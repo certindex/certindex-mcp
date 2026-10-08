@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "certindex-mcp"
-version = "0.2.1"
+version = "0.3.0"
 description = "MCP server exposing CertIndex's Certificate Transparency search tools to any MCP-compatible client."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -31,7 +31,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-  "mcp>=1.2.0,<2",
+  "mcp>=2,<3",
   "httpx>=0.27",
   "pydantic>=2.6",
 ]

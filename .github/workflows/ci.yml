@@ -11,12 +11,13 @@ permissions:
 
 jobs:
   test:
-    name: Test (py${{ matrix.python }})
+    name: Test (py${{ matrix.python }}, ${{ matrix.sdk }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13"]
+        sdk: ["mcp==2.0.0", "mcp>=2,<3"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,7 +27,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev]" "${{ matrix.sdk }}"
       - name: Lint
         run: ruff check .
       - name: Test
@@ -39,7 +40,7 @@ jobs:
       - name: Test clean wheel installation over stdio
         run: |
           python -m venv /tmp/certindex-wheel
-          /tmp/certindex-wheel/bin/pip install dist/*.whl pytest pytest-asyncio
+          /tmp/certindex-wheel/bin/pip install dist/*.whl pytest pytest-asyncio "${{ matrix.sdk }}"
           /tmp/certindex-wheel/bin/python -m pytest -v tests/test_stdio.py tests/test_release_metadata.py
 
   audit:

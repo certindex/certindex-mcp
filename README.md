@@ -11,11 +11,14 @@ that exposes [CertIndex](https://ctindex.io)'s Certificate
 Transparency search tools to any MCP-compatible client (Claude
 Desktop, the MCP Inspector, Continue, etc.).
 
-CertIndex indexes the full public CT corpus (~5 M certificates, growing
-~100 k/day). This server wraps the public CertIndex REST API so an LLM
-can ask questions like:
+CertIndex ingests certificates directly from public Certificate
+Transparency logs and serves them from its own index. Historical
+backfill is still in progress, so results, especially for older
+certificates, may be incomplete. This
+server wraps the public CertIndex REST API so an LLM can ask questions
+like:
 
-- "List every TLS certificate ever issued for `example.com`."
+- "List the TLS certificates CertIndex has indexed for `example.com`."
 - "What subdomains has Let's Encrypt seen for `mycompany.io`?"
 - "Show me certs expiring in the next 30 days for `api.mycompany.io`."
 - "Pull the full PEM and CT log metadata for SHA-256 `<fingerprint>`."
@@ -34,6 +37,10 @@ call to the hosted CertIndex REST API over HTTPS. Two consequences:
    `pydantic`) — easy to audit, easy to vendor, no DB drivers.
 
 ## Install
+
+Version 0.3.0 uses MCP Python SDK 2.x (`mcp>=2,<3`) and Python 3.11+.
+The console command, environment variables and ten tool names are unchanged.
+For applications that must retain SDK 1.x, use `certindex-mcp==0.2.1`.
 
 ```bash
 pip install certindex-mcp
@@ -80,7 +87,7 @@ Ten tools, matching the hosted CertIndex MCP server 1:1:
 | --- | --- | --- |
 | `search_certificates` | Search the CT index by domain, CN, issuer, SAN, validity, or wildcard status. | `domain`, `cn`, `issuer`, `san`, `expired`, `is_wildcard`, `page`/`limit` |
 | `get_certificate` | Fetch a single cert by SHA-256 fingerprint. | `sha256`, `include_enrichment` |
-| `get_domain_certificates` | Every cert ever issued for an exact domain. | `valid_only`, `include_enrichment`, `include_signals` (paid plans), `page`/`limit` |
+| `get_domain_certificates` | Indexed certs for an exact domain. | `valid_only`, `include_enrichment`, `include_signals` (paid plans), `page`/`limit` |
 | `get_subdomains` | Enumerate unique subdomains seen in CT. | Offset (`page`/`limit`) **or** keyset cursor mode — pass `cursor=""` to start, then feed back each response's `next_cursor` |
 | `get_latest_cert` | Most recent currently-valid cert for a domain. | `include_enrichment`, `include_signals`, `include_precerts` (let precertificates compete for "latest") |
 | `get_expiring_certs` | Certs for a domain expiring within `days` days. | `days` |
@@ -119,7 +126,10 @@ pip install -e ".[dev]"
 pytest
 ```
 
-CI runs on Python 3.11 / 3.12 / 3.13.
+CI runs on Python 3.11 / 3.12 / 3.13 with both SDK 2.0.0 and the latest
+allowed 2.x release. It also installs the built wheel into a fresh environment
+and exercises initialization, tool enumeration and calls over real stdio.
+HTTP fixtures run on loopback; tests do not require production credentials.
 
 ## License
 
