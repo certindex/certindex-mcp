@@ -11,11 +11,14 @@ that exposes [CertIndex](https://ctindex.io)'s Certificate
 Transparency search tools to any MCP-compatible client (Claude
 Desktop, the MCP Inspector, Continue, etc.).
 
-CertIndex indexes the full public CT corpus (~5 M certificates, growing
-~100 k/day). This server wraps the public CertIndex REST API so an LLM
-can ask questions like:
+CertIndex ingests certificates directly from public Certificate
+Transparency logs and serves them from its own index. Historical
+backfill is still in progress, so results, especially for older
+certificates, may be incomplete. This
+server wraps the public CertIndex REST API so an LLM can ask questions
+like:
 
-- "List every TLS certificate ever issued for `example.com`."
+- "List the TLS certificates CertIndex has indexed for `example.com`."
 - "What subdomains has Let's Encrypt seen for `mycompany.io`?"
 - "Show me certs expiring in the next 30 days for `api.mycompany.io`."
 - "Pull the full PEM and CT log metadata for SHA-256 `<fingerprint>`."
@@ -84,7 +87,7 @@ Ten tools, matching the hosted CertIndex MCP server 1:1:
 | --- | --- | --- |
 | `search_certificates` | Search the CT index by domain, CN, issuer, SAN, validity, or wildcard status. | `domain`, `cn`, `issuer`, `san`, `expired`, `is_wildcard`, `page`/`limit` |
 | `get_certificate` | Fetch a single cert by SHA-256 fingerprint. | `sha256`, `include_enrichment` |
-| `get_domain_certificates` | Every cert ever issued for an exact domain. | `valid_only`, `include_enrichment`, `include_signals` (paid plans), `page`/`limit` |
+| `get_domain_certificates` | Indexed certs for an exact domain. | `valid_only`, `include_enrichment`, `include_signals` (paid plans), `page`/`limit` |
 | `get_subdomains` | Enumerate unique subdomains seen in CT. | Offset (`page`/`limit`) **or** keyset cursor mode — pass `cursor=""` to start, then feed back each response's `next_cursor` |
 | `get_latest_cert` | Most recent currently-valid cert for a domain. | `include_enrichment`, `include_signals`, `include_precerts` (let precertificates compete for "latest") |
 | `get_expiring_certs` | Certs for a domain expiring within `days` days. | `days` |
